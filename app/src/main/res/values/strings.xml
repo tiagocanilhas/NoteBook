@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Notebook</string>
+
+    <string name="create">Create</string>
+    <string name="cancel">Cancel</string>
+
+    <string name="enter_book_name">Enter book name</string>
+    <string name="enter_section_name">Enter section name</string>
+</resources>
