@@ -4,9 +4,15 @@
     <color name="secondary">#FF6200EE</color>
     <color name="tertiary">#FF03DAC5</color>
 
-    <color name="option_selected">#0A1433</color>
-    <color name="option_unselected">#222238</color>
+    <color name="section_tab_option_selected">#0A1433</color>
+    <color name="section_tab_option_unselected">#222238</color>
+    <color name="section_tab_add">#222238</color>
+    <color name="section_tab_background">#11142C</color>
+
+    <color name="page_tab_option_selected">#0A1433</color>
+    <color name="page_tab_option_unselected">#222238</color>
+    <color name="page_tab_add">#222238</color>
+    <color name="page_tab_background">#11142C</color>
 
     <color name="background">#0B0F22</color>
-    <color name="background_variant">#11142C</color>
 </resources>

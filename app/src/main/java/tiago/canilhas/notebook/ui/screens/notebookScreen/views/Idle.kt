@@ -1,5 +1,11 @@
 package tiago.canilhas.notebook.ui.screens.notebookScreen.views
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -44,7 +50,11 @@ fun IdleView (
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            if (isTabOpen)
+            AnimatedVisibility(
+                visible = isTabOpen,
+                enter = DrawerTransition.enterTransition,
+                exit = DrawerTransition.exitTransition
+            ) {
                 NotebookPageSelectionTab(
                     sections = sections,
                     pages = pages,
@@ -58,8 +68,25 @@ fun IdleView (
                         .weight(1f)
                         .fillMaxHeight()
                 )
+            }
         }
     }
+}
+
+object DrawerTransition {
+    private const val ANIM_DURATION = 300
+
+    val enterTransition: EnterTransition =
+        slideInHorizontally(
+            initialOffsetX = { fullWidth -> -fullWidth },
+            animationSpec = tween(durationMillis = 300)
+        )
+
+    val exitTransition: ExitTransition =
+        slideOutHorizontally(
+            targetOffsetX = { fullWidth -> -fullWidth },
+            animationSpec = tween(ANIM_DURATION)
+        )
 }
 
 @Preview

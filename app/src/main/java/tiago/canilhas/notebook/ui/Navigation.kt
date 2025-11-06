@@ -3,8 +3,6 @@ package tiago.canilhas.notebook.ui
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
@@ -19,7 +17,6 @@ import tiago.canilhas.notebook.ui.screens.mainScreen.Screen as MainScreen
 import tiago.canilhas.notebook.ui.screens.mainScreen.ViewModel as MainViewModel
 import tiago.canilhas.notebook.ui.screens.notebookScreen.Screen as NotebookScreen
 import tiago.canilhas.notebook.ui.screens.notebookScreen.ViewModel as NotebookViewModel
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.navigation.NavBackStackEntry
 
@@ -31,7 +28,7 @@ fun Navigation(
 
     NavHost(
         navController = navController,
-        startDestination = "main",
+        startDestination = Routes.Main.ROUTE,
         modifier = Modifier.fillMaxSize(),
         enterTransition = Transitions.enterTransition,
         exitTransition = Transitions.exitTransition,
@@ -39,7 +36,7 @@ fun Navigation(
         popExitTransition = Transitions.popExitTransition
     ) {
 
-        composable(route = "main") {
+        composable(route = Routes.Main.ROUTE) {
             val viewModel: MainViewModel = viewModel(factory = factory)
 
             MainScreen(
@@ -51,12 +48,12 @@ fun Navigation(
         }
 
         composable(
-            route = "detail/{notebookId}",
-            arguments = listOf(navArgument("notebookId") { type = NavType.LongType })
+            route = Routes.Notebook.ROUTE,
+            arguments = listOf(navArgument(Routes.Notebook.ARGUMENT_1) { type = NavType.LongType })
         ) { backStackEntry ->
             val viewModel: NotebookViewModel = viewModel(factory = factory)
 
-            val notebookId = backStackEntry.arguments?.getLong("notebookId") ?: 0
+            val notebookId = backStackEntry.arguments?.getLong(Routes.Notebook.ARGUMENT_1) ?: 0L
 
             LaunchedEffect(notebookId) {
                 if (notebookId > 0) viewModel.loadNotebookData(notebookId)
@@ -67,6 +64,18 @@ fun Navigation(
                 onBackClicked = { navController.popBackStack() }
             )
         }
+    }
+}
+
+object Routes {
+
+    object Main {
+        const val ROUTE = "main"
+    }
+
+    object Notebook {
+        const val ARGUMENT_1 = "notebookId"
+        const val ROUTE = "detail/{$ARGUMENT_1}"
     }
 }
 

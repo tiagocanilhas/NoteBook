@@ -1,10 +1,11 @@
 package tiago.canilhas.notebook.ui.components
 
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.tooling.preview.Preview
+import tiago.canilhas.notebook.R
 import tiago.canilhas.notebook.data.db.entity.Page
 import tiago.canilhas.notebook.data.db.entity.Section
 
@@ -26,6 +27,10 @@ fun NotebookPageSelectionTab(
         ScrollableTab(
             options = sections.map { it.name },
             selectedIndex = sections.indexOfFirst { it.id == currentSelectedSectionId },
+            backgroundColor = colorResource(R.color.section_tab_background),
+            optionSelectedColor = colorResource(R.color.section_tab_option_selected),
+            optionUnselectedColor = colorResource(R.color.section_tab_option_unselected),
+            addColor = colorResource(R.color.section_tab_add),
             onOptionSelected = { idx -> onSectionSelected(sections[idx].id) },
             onAddClicked = onAddSection
         )
@@ -34,6 +39,10 @@ fun NotebookPageSelectionTab(
             ScrollableTab(
                 options = pages.map { it.title },
                 selectedIndex = pages.indexOfFirst { it.id == currentSelectedPageId },
+                backgroundColor = colorResource(R.color.page_tab_background),
+                optionSelectedColor = colorResource(R.color.page_tab_option_selected),
+                optionUnselectedColor = colorResource(R.color.page_tab_option_unselected),
+                addColor = colorResource(R.color.page_tab_add),
                 onOptionSelected = { idx -> onPageSelected(pages[idx].id) },
                 onAddClicked = onAddPage
             )

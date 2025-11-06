@@ -5,7 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -26,12 +25,16 @@ import tiago.canilhas.notebook.R
 fun ScrollableTab(
     options: List<String>,
     selectedIndex: Int,
+    backgroundColor: Color,
+    optionSelectedColor: Color,
+    optionUnselectedColor: Color,
+    addColor: Color,
     onOptionSelected: (Int) -> Unit,
     onAddClicked: () -> Unit
 ) {
     Column(
         modifier = Modifier
-            .background(color = colorResource(R.color.background_variant))
+            .background(color = backgroundColor)
             .border(Tab.TAB_BORDER_SIZE.dp, Tab.BORDER_COLOR),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -43,12 +46,15 @@ fun ScrollableTab(
                 TabOption(
                     option = option,
                     isSelected = index == selectedIndex,
+                    selectedColor = optionSelectedColor,
+                    unselectedColor = optionUnselectedColor,
                     onOptionSelected = { onOptionSelected(index) }
                 )
             }
         }
 
         TabAdd(
+            color = addColor,
             onAddSelected = onAddClicked
         )
     }
@@ -71,6 +77,8 @@ object Tab {
 fun TabOption(
     option: String,
     isSelected: Boolean,
+    selectedColor: Color,
+    unselectedColor: Color,
     onOptionSelected: () -> Unit
 ) {
     Box(
@@ -78,8 +86,8 @@ fun TabOption(
             .width(Tab.OPTION_WIDTH.dp)
             .height(Tab.OPTION_HEIGHT.dp)
             .background(color =
-                if (isSelected) colorResource(R.color.option_selected)
-                else colorResource(R.color.option_unselected)
+                if (isSelected) selectedColor
+                else unselectedColor
             )
             .border(Tab.OPTION_BORDER_SIZE.dp, Tab.BORDER_COLOR)
             .clickable { onOptionSelected() }
@@ -97,14 +105,15 @@ fun TabOption(
 
 @Composable
 fun TabAdd(
-    onAddSelected: () -> Unit
+    onAddSelected: () -> Unit,
+    color: Color,
 ) {
     Box(
         modifier = Modifier
             .width(Tab.OPTION_WIDTH.dp)
             .height(Tab.OPTION_HEIGHT.dp)
             .border(Tab.OPTION_BORDER_SIZE.dp, Tab.BORDER_COLOR)
-            .background(color = colorResource(R.color.option_unselected))
+            .background(color = color)
             .clickable { onAddSelected() }
             .padding(Tab.PADDING.dp),
         contentAlignment = Alignment.Center
@@ -123,6 +132,10 @@ fun ScrollableTabPreview() {
     ScrollableTab(
         options = listOf("Tab 1", "Tab 2", "Tab 3"),
         selectedIndex = 0,
+        backgroundColor = colorResource(R.color.section_tab_background),
+        optionSelectedColor = colorResource(R.color.section_tab_option_selected),
+        optionUnselectedColor = colorResource(R.color.section_tab_option_unselected),
+        addColor = colorResource(R.color.section_tab_add),
         onOptionSelected = {},
         onAddClicked = {}
     )

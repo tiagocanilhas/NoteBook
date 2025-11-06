@@ -39,7 +39,7 @@ fun Screen(
                 CreatePopup(
                     placeholder = stringResource(id = R.string.enter_section_name),
                     value = state.addSectionPopupTextFieldValue,
-                    onValueChange = viewModel::onPopupNameChange,
+                    onValueChange = viewModel::onAddSectionPopupNameChange,
                     onAccept = viewModel::createNewSection,
                     onDismiss = viewModel::onDismissAddSectionPopup
                 )

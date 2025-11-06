@@ -5,16 +5,13 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted.Companion.WhileSubscribed
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import tiago.canilhas.notebook.data.db.entity.Notebook
@@ -28,10 +25,15 @@ sealed interface State {
         val notebook: Notebook,
         val sections: List<Section>,
         val pages: List<Page>,
+
         val currentSelectedSectionId: Long?,
         val currentSelectedPageId: Long?,
+
         val isAddSectionPopupShowing: Boolean = false,
         val addSectionPopupTextFieldValue: String = "",
+
+        val currentStrokes: List<Any> = emptyList(),
+
         val isTabOpen: Boolean = true
     ) : State
     data class Error(val exception: Throwable) : State
@@ -41,13 +43,12 @@ sealed interface State {
 class ViewModel(
     private val repository: NotebookRepository
 ) : ViewModel() {
+    private val _stateFlow = MutableStateFlow<State>(State.Loading)
+    val stateFlow: StateFlow<State> = _stateFlow.asStateFlow()
 
     private val _notebookId = MutableStateFlow<Long?>(null)
     private val _selectedSectionId = MutableStateFlow<Long?>(null)
     private val _selectedPageId = MutableStateFlow<Long?>(null)
-
-    private val _stateFlow = MutableStateFlow<State>(State.Loading)
-    val stateFlow: StateFlow<State> = _stateFlow.asStateFlow()
 
     private val _dataFlow: Flow<Triple<Notebook, List<Section>, List<Page>>?> =
         _notebookId
@@ -91,19 +92,17 @@ class ViewModel(
                     val (notebook, sections, pages) = data
 
                     _stateFlow.update {
-                        val (isAddSectionPopupShowing, addSectionPopupTextFieldValue) = Pair(
-                            (it as? State.Idle)?.isAddSectionPopupShowing ?: false,
-                            (it as? State.Idle)?.addSectionPopupTextFieldValue ?: ""
-                        )
-
+                        val idleState = it as? State.Idle
                         State.Idle(
                             notebook = notebook,
                             sections = sections,
                             pages = pages,
                             currentSelectedSectionId = _selectedSectionId.value,
                             currentSelectedPageId = _selectedPageId.value,
-                            isAddSectionPopupShowing = isAddSectionPopupShowing,
-                            addSectionPopupTextFieldValue = addSectionPopupTextFieldValue
+                            isAddSectionPopupShowing = idleState?.isAddSectionPopupShowing ?: false,
+                            addSectionPopupTextFieldValue = idleState?.addSectionPopupTextFieldValue ?: "",
+                            isTabOpen = idleState?.isTabOpen ?: true,
+                            currentStrokes = idleState?.currentStrokes ?: emptyList(),
                         )
                     }
                 }
@@ -115,14 +114,13 @@ class ViewModel(
         _notebookId.value = notebookId
     }
 
+    /**
+     * Section
+     */
+
     fun onSectionSelected(sectionId: Long) {
         _selectedSectionId.value = sectionId
     }
-
-    fun onPageSelected(pageId: Long) {
-        _selectedPageId.value = pageId
-    }
-
 
     fun onAddSection() {
         _stateFlow.update {
@@ -130,7 +128,7 @@ class ViewModel(
         }
     }
 
-    fun onPopupNameChange(newName: String) {
+    fun onAddSectionPopupNameChange(newName: String) {
         _stateFlow.update {
             (it as? State.Idle)?.copy(addSectionPopupTextFieldValue = newName) ?: it
         }
@@ -166,6 +164,16 @@ class ViewModel(
                 }
             }
         }
+    }
+
+
+
+    /**
+     * Page
+     */
+
+    fun onPageSelected(pageId: Long) {
+        _selectedPageId.value = pageId
     }
 
     fun createNewPage() {
