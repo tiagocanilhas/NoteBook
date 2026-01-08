@@ -29,14 +29,18 @@ sealed interface State {
         val currentSelectedSectionId: Long?,
         val currentSelectedPageId: Long?,
 
-        val isAddSectionPopupShowing: Boolean = false,
-        val addSectionPopupTextFieldValue: String = "",
+        val activePopup: ActivePopup? = null,
 
-        val currentStrokes: List<Any> = emptyList(),
+        val drawingState: DrawingState = DrawingState(),
 
         val isTabOpen: Boolean = true
     ) : State
     data class Error(val exception: Throwable) : State
+}
+
+sealed interface ActivePopup {
+    data class AddSection(val title: String = "") : ActivePopup
+    data class EditSection(val id: Long, val title: String) : ActivePopup
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -93,16 +97,31 @@ class ViewModel(
 
                     _stateFlow.update {
                         val idleState = it as? State.Idle
+
+                        val previousPageId = idleState?.currentSelectedPageId
+
+                        val pageIdToUse =
+                            if (pages.any { it.id == previousPageId }) previousPageId
+                            else null
+
+
+                        val drawingToUse =
+                            if (pageIdToUse != null) idleState?.drawingState ?: DrawingState()
+                            else DrawingState()
+
                         State.Idle(
                             notebook = notebook,
                             sections = sections,
                             pages = pages,
+
                             currentSelectedSectionId = _selectedSectionId.value,
-                            currentSelectedPageId = _selectedPageId.value,
-                            isAddSectionPopupShowing = idleState?.isAddSectionPopupShowing ?: false,
-                            addSectionPopupTextFieldValue = idleState?.addSectionPopupTextFieldValue ?: "",
+                            currentSelectedPageId = pageIdToUse,
+
+                            activePopup = idleState?.activePopup,
+
+                            drawingState = drawingToUse,
+
                             isTabOpen = idleState?.isTabOpen ?: true,
-                            currentStrokes = idleState?.currentStrokes ?: emptyList(),
                         )
                     }
                 }
@@ -110,8 +129,19 @@ class ViewModel(
         }
     }
 
+    private val drawingHelper = DrawingHelper(viewModelScope, repository)
+
     fun loadNotebookData(notebookId: Long) {
         _notebookId.value = notebookId
+    }
+
+
+    fun toggleTab() {
+        _stateFlow.update {
+            (it as? State.Idle)
+                ?.let { idleState -> idleState.copy(isTabOpen = !idleState.isTabOpen) }
+                ?: it
+        }
     }
 
     /**
@@ -120,45 +150,109 @@ class ViewModel(
 
     fun onSectionSelected(sectionId: Long) {
         _selectedSectionId.value = sectionId
+
+        _stateFlow.update {
+            (it as? State.Idle)
+                ?.copy(
+                    currentSelectedSectionId = sectionId,
+                    currentSelectedPageId = null,
+                    drawingState = DrawingState()
+                )
+                ?: it
+        }
+    }
+
+    fun onSectionLongClicked(sectionId: Long) {
+        val currentState = _stateFlow.value
+        if (currentState is State.Idle) {
+            val section = currentState.sections.find { it.id == sectionId }
+            if (section != null) {
+                _stateFlow.update {
+                    currentState.copy(
+                        activePopup = ActivePopup.EditSection(
+                            id = section.id,
+                            title = section.name
+                        )
+                    )
+                }
+            }
+        }
     }
 
     fun onAddSection() {
         _stateFlow.update {
-            (it as? State.Idle)?.copy(isAddSectionPopupShowing = true) ?: it
+            (it as? State.Idle)?.copy(activePopup = ActivePopup.AddSection()) ?: it
         }
     }
 
-    fun onAddSectionPopupNameChange(newName: String) {
-        _stateFlow.update {
-            (it as? State.Idle)?.copy(addSectionPopupTextFieldValue = newName) ?: it
+    fun onPopupNameChange(newName: String) {
+        _stateFlow.update { it ->
+            (it as? State.Idle)?.let { idleState ->
+                val updatedPopup =
+                    when (val popup = idleState.activePopup) {
+                        is ActivePopup.AddSection -> popup.copy(title = newName)
+                        is ActivePopup.EditSection -> popup.copy(title = newName)
+                        else -> return@let idleState
+                    }
+
+                idleState.copy(activePopup = updatedPopup)
+            } ?: it
         }
     }
 
-    fun onDismissAddSectionPopup() {
+    fun onDismissPopup() {
         _stateFlow.update {
-            (it as? State.Idle)
-                ?.copy(isAddSectionPopupShowing = false, addSectionPopupTextFieldValue = "")
-                ?: it
+            (it as? State.Idle)?.copy(activePopup = null) ?: it
         }
     }
 
     fun createNewSection() {
         val currentState = _stateFlow.value
         val notebookId = _notebookId.value
-        if (currentState is State.Idle && notebookId != null) {
-            val name = currentState.addSectionPopupTextFieldValue
+        if (
+            currentState is State.Idle
+            && notebookId != null
+            && currentState.activePopup is ActivePopup.AddSection
+            ) {
+
+            val name = currentState.activePopup.title
 
             _stateFlow.update {
-                currentState.copy(
-                    isAddSectionPopupShowing = false,
-                    addSectionPopupTextFieldValue = ""
-                )
+                currentState.copy(activePopup = null)
             }
 
             viewModelScope.launch {
                 try {
                     val newSection = Section(notebookId = notebookId, name = name)
                     repository.insertSection(newSection)
+                } catch (e: Throwable) {
+                    _stateFlow.value = State.Error(e)
+                }
+            }
+        }
+    }
+
+    fun updateSection() {
+        val currentState = _stateFlow.value
+        if (
+            currentState is State.Idle
+            && currentState.activePopup is ActivePopup.EditSection
+        ) {
+            val sectionId = currentState.activePopup.id
+            val newName = currentState.activePopup.title
+
+            _stateFlow.update {
+                currentState.copy(activePopup = null)
+            }
+
+            val section = currentState.sections.find { it.id == sectionId }
+
+            viewModelScope.launch {
+                try {
+                    if (section != null) {
+                        val updatedSection = section.copy(name = newName)
+                        repository.updateSection(updatedSection)
+                    }
                 } catch (e: Throwable) {
                     _stateFlow.value = State.Error(e)
                 }
@@ -174,6 +268,20 @@ class ViewModel(
 
     fun onPageSelected(pageId: Long) {
         _selectedPageId.value = pageId
+
+        val currentState = _stateFlow.value
+        if (currentState is State.Idle) {
+            val page = currentState.pages.find { it.id == pageId }
+            val paths = drawingHelper.parseJsonToPaths(page?.content ?: "")
+            _stateFlow.update {
+                (it as? State.Idle)
+                    ?.copy(
+                        drawingState = DrawingState(paths = paths),
+                        currentSelectedPageId = pageId
+                    )
+                    ?: it
+            }
+        }
     }
 
     fun createNewPage() {
@@ -183,11 +291,7 @@ class ViewModel(
 
             viewModelScope.launch {
                 try {
-                    val newPage = Page(
-                        sectionId = sectionId,
-                        title = "",
-                        content = ""
-                    )
+                    val newPage = Page.create(sectionId = sectionId)
                     repository.insertPage(newPage)
 
                 } catch (e: Throwable) {
@@ -197,11 +301,28 @@ class ViewModel(
         }
     }
 
-    fun toggleTab() {
+    fun onNewStroke(newPath: PathData) {
         _stateFlow.update {
-            (it as? State.Idle)
-                ?.let { idleState -> idleState.copy(isTabOpen = !idleState.isTabOpen) }
-                ?: it
+            val idleState = it as? State.Idle ?: return@update it
+
+            val oldDrawingState = idleState.drawingState
+            val newDrawingState = oldDrawingState.copy(
+                paths = oldDrawingState.paths + newPath
+            )
+
+            idleState.copy(drawingState = newDrawingState)
+        }
+
+        val currentState = _stateFlow.value
+        if (currentState is State.Idle) {
+            val page = currentState.pages.find { it.id == _selectedPageId.value }
+
+            if (page != null) {
+                drawingHelper.saveDrawingWithDebounce(
+                    page = page,
+                    paths = currentState.drawingState.paths
+                )
+            }
         }
     }
 }

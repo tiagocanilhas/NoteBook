@@ -12,6 +12,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -21,14 +23,16 @@ import androidx.compose.ui.window.Dialog
 import tiago.canilhas.notebook.R
 
 @Composable
-fun CreatePopup (
+fun Popup (
     placeholder: String,
     value: String,
     onValueChange: (String) -> Unit,
     onAccept: () -> Unit,
+    onAcceptText: String,
     onDismiss: () -> Unit,
 ) {
-    val isDisabled = value.isBlank()
+    val initialValue = rememberSaveable { value }
+    val isDisabled = value.isBlank() || value == initialValue
 
     Dialog(
         onDismissRequest = onDismiss
@@ -54,7 +58,7 @@ fun CreatePopup (
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
             ) {
                 Button(onClick = onAccept, enabled = !isDisabled) {
-                    Text(stringResource(id = R.string.create))
+                    Text(onAcceptText)
                 }
                 Button(onClick = onDismiss) {
                     Text(stringResource(id = R.string.cancel))

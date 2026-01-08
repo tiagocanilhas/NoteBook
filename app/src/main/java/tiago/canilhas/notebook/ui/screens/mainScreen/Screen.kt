@@ -6,7 +6,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import tiago.canilhas.notebook.R
-import tiago.canilhas.notebook.ui.components.CreatePopup
+import tiago.canilhas.notebook.ui.components.Popup
 import tiago.canilhas.notebook.ui.screens.mainScreen.views.IdleView
 import tiago.canilhas.notebook.ui.screens.mainScreen.views.LoadingView
 
@@ -29,11 +29,12 @@ fun Screen(
             )
 
             if (state.isPopupShowing) {
-                CreatePopup(
+                Popup(
                     placeholder = stringResource(id = R.string.enter_book_name),
                     value = state.popupTextFieldValue,
                     onValueChange = viewModel::onPopupNameChange,
                     onAccept = viewModel::createNewNotebook,
+                    onAcceptText = stringResource(id = R.string.create),
                     onDismiss = viewModel::onDismissAddBookPopup
                 )
             }

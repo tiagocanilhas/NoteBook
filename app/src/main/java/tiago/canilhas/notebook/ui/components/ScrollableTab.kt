@@ -3,6 +3,7 @@ package tiago.canilhas.notebook.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
@@ -30,6 +31,7 @@ fun ScrollableTab(
     optionUnselectedColor: Color,
     addColor: Color,
     onOptionSelected: (Int) -> Unit,
+    onOptionLongClicked: (Int) -> Unit,
     onAddClicked: () -> Unit
 ) {
     Column(
@@ -48,7 +50,8 @@ fun ScrollableTab(
                     isSelected = index == selectedIndex,
                     selectedColor = optionSelectedColor,
                     unselectedColor = optionUnselectedColor,
-                    onOptionSelected = { onOptionSelected(index) }
+                    onOptionSelected = { onOptionSelected(index) },
+                    onLongClick = { onOptionLongClicked(index) }
                 )
             }
         }
@@ -79,7 +82,8 @@ fun TabOption(
     isSelected: Boolean,
     selectedColor: Color,
     unselectedColor: Color,
-    onOptionSelected: () -> Unit
+    onOptionSelected: () -> Unit,
+    onLongClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -90,7 +94,10 @@ fun TabOption(
                 else unselectedColor
             )
             .border(Tab.OPTION_BORDER_SIZE.dp, Tab.BORDER_COLOR)
-            .clickable { onOptionSelected() }
+            .combinedClickable(
+                onClick = { onOptionSelected() },
+                onLongClick = { onLongClick() }
+            )
             .padding(Tab.PADDING.dp),
         contentAlignment = Alignment.CenterStart
     ){
@@ -137,6 +144,7 @@ fun ScrollableTabPreview() {
         optionUnselectedColor = colorResource(R.color.section_tab_option_unselected),
         addColor = colorResource(R.color.section_tab_add),
         onOptionSelected = {},
+        onOptionLongClicked = {},
         onAddClicked = {}
     )
 }

@@ -16,6 +16,7 @@ fun NotebookPageSelectionTab(
     currentSelectedSectionId: Long?,
     currentSelectedPageId: Long?,
     onSectionSelected: (Long) -> Unit,
+    onSectionLongClicked: (Long) -> Unit,
     onAddSection: () -> Unit,
     onPageSelected: (Long) -> Unit,
     onAddPage: () -> Unit,
@@ -32,6 +33,7 @@ fun NotebookPageSelectionTab(
             optionUnselectedColor = colorResource(R.color.section_tab_option_unselected),
             addColor = colorResource(R.color.section_tab_add),
             onOptionSelected = { idx -> onSectionSelected(sections[idx].id) },
+            onOptionLongClicked = { idx -> onSectionLongClicked(sections[idx].id) },
             onAddClicked = onAddSection
         )
 
@@ -44,6 +46,7 @@ fun NotebookPageSelectionTab(
                 optionUnselectedColor = colorResource(R.color.page_tab_option_unselected),
                 addColor = colorResource(R.color.page_tab_add),
                 onOptionSelected = { idx -> onPageSelected(pages[idx].id) },
+                onOptionLongClicked = { _ -> },
                 onAddClicked = onAddPage
             )
     }
@@ -71,6 +74,7 @@ fun NotebookPageSelectionTabPreview() {
         currentSelectedPageId = 2,
         onSectionSelected = {},
         onAddSection = {},
+        onSectionLongClicked = {},
         onPageSelected = {},
         onAddPage = {}
     )

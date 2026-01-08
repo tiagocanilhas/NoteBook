@@ -2,8 +2,11 @@
     <string name="app_name">Notebook</string>
 
     <string name="create">Create</string>
+    <string name="save">Save</string>
     <string name="cancel">Cancel</string>
 
     <string name="enter_book_name">Enter book name</string>
     <string name="enter_section_name">Enter section name</string>
+
+    <string name="select_page">Select a page</string>
 </resources>

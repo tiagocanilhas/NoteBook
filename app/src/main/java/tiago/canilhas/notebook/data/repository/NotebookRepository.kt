@@ -53,6 +53,12 @@ class NotebookRepository(
         // TODO: Call API to make sync with Cloud in the future
     }
 
+    suspend fun updateSection(section: Section) {
+        // TODO: Call API to make sync with Cloud in the future
+
+        sectionDao.update(section)
+    }
+
 
 
     /**
@@ -64,8 +70,6 @@ class NotebookRepository(
     fun getPageById(pageId: Long) = pageDao.getPageById(pageId)
 
     suspend fun insertPage(page: Page): Long {
-        page.updatedAt = System.currentTimeMillis()
-
         // TODO: Call API to make sync with Cloud in the future
 
         return pageDao.insert(page)

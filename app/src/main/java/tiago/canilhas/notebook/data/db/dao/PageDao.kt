@@ -19,7 +19,7 @@ interface PageDao {
     @Query("SELECT * FROM pages WHERE id = :pageId")
     fun getPageById(pageId: Long): Flow<Page>
 
-    @Query("SELECT * FROM pages WHERE sectionId = :sectionId ORDER BY updatedAt DESC")
+    @Query("SELECT * FROM pages WHERE sectionId = :sectionId ORDER BY createdAt ASC")
     fun getPagesForSection(sectionId: Long): Flow<List<Page>>
 
     @Update

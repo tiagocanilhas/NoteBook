@@ -25,4 +25,17 @@ data class Page(
     var content: String,
     val createdAt: Long = System.currentTimeMillis(),
     var updatedAt: Long = System.currentTimeMillis()
-)
+) {
+    companion object {
+        fun create(sectionId: Long): Page {
+            val currentTime = System.currentTimeMillis()
+            return Page(
+                sectionId = sectionId,
+                title = "New Page",
+                content = "",
+                createdAt = currentTime,
+                updatedAt = currentTime
+            )
+        }
+    }
+}
