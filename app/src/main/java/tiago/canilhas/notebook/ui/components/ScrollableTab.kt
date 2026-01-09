@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,6 +71,8 @@ object Tab {
     const val PADDING = 2
     const val OPTION_BORDER_SIZE = 0.1f
     const val TAB_BORDER_SIZE = 1f
+    const val TAB_FULL_WIDTH = OPTION_WIDTH + OPTION_BORDER_SIZE * 2
+
     val BORDER_COLOR = Color.Black
 
     const val FONT_SIZE = 28
@@ -77,7 +80,7 @@ object Tab {
 }
 
 @Composable
-fun TabOption(
+private fun TabOption(
     option: String,
     isSelected: Boolean,
     selectedColor: Color,
@@ -105,13 +108,14 @@ fun TabOption(
             text = option,
             fontSize = Tab.FONT_SIZE.sp,
             color = Tab.TEXT_COLOR,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
 
 
 @Composable
-fun TabAdd(
+private fun TabAdd(
     onAddSelected: () -> Unit,
     color: Color,
 ) {

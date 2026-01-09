@@ -1,36 +1,40 @@
 package tiago.canilhas.notebook.ui.screens.notebookScreen.views
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
+import android.annotation.SuppressLint
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import tiago.canilhas.notebook.R
 import tiago.canilhas.notebook.data.db.entity.Notebook
 import tiago.canilhas.notebook.data.db.entity.Page
 import tiago.canilhas.notebook.data.db.entity.Section
 import tiago.canilhas.notebook.ui.components.NotebookPageSelectionTab
+import tiago.canilhas.notebook.ui.components.Tab
 import tiago.canilhas.notebook.ui.components.TopBar
 import tiago.canilhas.notebook.ui.screens.notebookScreen.DrawingState
 import tiago.canilhas.notebook.ui.screens.notebookScreen.PathData
 
+@SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
-fun IdleView (
+fun IdleView(
     notebook: Notebook,
     sections: List<Section>,
     pages: List<Page>,
@@ -50,6 +54,18 @@ fun IdleView (
     isTabOpen: Boolean,
     toggleTab: () -> Unit,
 ) {
+    val tabWidth =
+        if (currentSelectedSectionId == null) Tab.TAB_FULL_WIDTH.dp
+        else (Tab.TAB_FULL_WIDTH * 2).dp
+
+    val animationWidth by animateDpAsState(
+        targetValue = if (isTabOpen) tabWidth else 0.dp,
+        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+        label = "animation"
+    )
+
+    BackHandler(enabled = isTabOpen) { toggleTab() }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -58,74 +74,75 @@ fun IdleView (
             )
         },
     ) { innerPadding ->
-        Row(
+        Layout(
             modifier = Modifier
                 .padding(innerPadding)
-                .fillMaxSize()
-        ) {
-            AnimatedVisibility(
-                visible = isTabOpen,
-                enter = DrawerTransition.enterTransition,
-                exit = DrawerTransition.exitTransition
-            ) {
-                NotebookPageSelectionTab(
-                    sections = sections,
-                    pages = pages,
-                    currentSelectedSectionId = currentSelectedSectionId,
-                    currentSelectedPageId = currentSelectedPageId,
-                    onSectionSelected = onSectionSelected,
-                    onSectionLongClicked = onSectionLongClicked,
-                    onAddSection = onAddSection,
-                    onPageSelected = onPageSelected,
-                    onAddPage = onAddPage,
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                )
-            }
+                .fillMaxSize(),
+            content = {
+                if (animationWidth > 0.dp)
+                    Box(modifier = Modifier.layoutId("tab")) {
+                        NotebookPageSelectionTab(
+                            sections = sections,
+                            pages = pages,
+                            currentSelectedSectionId = currentSelectedSectionId,
+                            currentSelectedPageId = currentSelectedPageId,
+                            onSectionSelected = onSectionSelected,
+                            onSectionLongClicked = onSectionLongClicked,
+                            onAddSection = onAddSection,
+                            onPageSelected = onPageSelected,
+                            onAddPage = onAddPage,
+                            modifier = Modifier.fillMaxHeight()
+                        )
+                    }
 
-            if (currentSelectedPageId != null) {
-                DrawingCanvas(
-                    paths = drawingState.paths,
-                    onPathEnd = onNewStroke,
-                    currentPath = null,
-                    onNewPathStart = {},
-                    onPathUpdate = {},
-                    modifier = Modifier
-                        .weight(3f)
-                        .fillMaxHeight()
-                )
-            }
-            else {
-                Box(
-                    modifier = Modifier
-                        .weight(3f)
-                        .fillMaxHeight()
-                        .background(Color.LightGray),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(stringResource(R.string.select_page))
+                Box(modifier = Modifier.layoutId("canvas")) {
+                    if (currentSelectedPageId != null) {
+                        DrawingCanvas(
+                            paths = drawingState.paths,
+                            onPathEnd = onNewStroke,
+                            currentPath = null,
+                            onNewPathStart = {},
+                            onPathUpdate = {},
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.LightGray),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(stringResource(R.string.select_page))
+                        }
+                    }
                 }
+            }
+        ) { measurables, constraints ->
+            val currentVisibleWidthPx = animationWidth.roundToPx()
+            val tabWidthPx = tabWidth.roundToPx()
+
+            val tabMeasurable = measurables.find { it.layoutId == "tab" }
+            val tabPlaceable = tabMeasurable?.measure(
+                constraints.copy(minWidth = tabWidthPx, maxWidth = tabWidthPx)
+            )
+
+            val canvasWidthPx = constraints.maxWidth - currentVisibleWidthPx
+            val canvasMeasurable = measurables.first { it.layoutId == "canvas" }
+            val canvasPlaceable = canvasMeasurable.measure(
+                constraints.copy(minWidth = canvasWidthPx, maxWidth = canvasWidthPx)
+            )
+
+            layout(constraints.maxWidth, constraints.maxHeight) {
+                if (tabPlaceable != null){
+                    val tabXOffset = currentVisibleWidthPx - tabWidthPx
+                    tabPlaceable.placeRelative(x = tabXOffset, y = 0)
+                }
+                canvasPlaceable.placeRelative(x = currentVisibleWidthPx, y = 0)
             }
         }
     }
 }
 
-object DrawerTransition {
-    private const val ANIM_DURATION = 300
-
-    val enterTransition: EnterTransition =
-        slideInHorizontally(
-            initialOffsetX = { fullWidth -> -fullWidth },
-            animationSpec = tween(durationMillis = 300)
-        )
-
-    val exitTransition: ExitTransition =
-        slideOutHorizontally(
-            targetOffsetX = { fullWidth -> -fullWidth },
-            animationSpec = tween(ANIM_DURATION)
-        )
-}
 
 @Preview
 @Composable
