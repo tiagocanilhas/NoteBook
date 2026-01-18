@@ -17,6 +17,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.changedToUp
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.res.stringResource
@@ -114,6 +116,22 @@ fun IdleView(
                         ) {
                             Text(stringResource(R.string.select_page))
                         }
+                    }
+
+                    if (isTabOpen) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.5f))
+                                .pointerInput(Unit) {
+                                    awaitPointerEventScope {
+                                        while (true) {
+                                            val touch = awaitPointerEvent().changes.first().changedToUp()
+                                            if (touch) toggleTab()
+                                        }
+                                    }
+                                }
+                        )
                     }
                 }
             }
