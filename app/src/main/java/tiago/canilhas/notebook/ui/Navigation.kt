@@ -53,12 +53,6 @@ fun Navigation(
         ) { backStackEntry ->
             val viewModel: NotebookViewModel = viewModel(factory = factory)
 
-            val notebookId = backStackEntry.arguments?.getLong(Routes.Notebook.ARGUMENT_1) ?: 0L
-
-            LaunchedEffect(notebookId) {
-                if (notebookId > 0) viewModel.loadNotebookData(notebookId)
-            }
-
             NotebookScreen(
                 viewModel = viewModel,
                 onBackClicked = { navController.popBackStack() }
@@ -67,7 +61,7 @@ fun Navigation(
     }
 }
 
-object Routes {
+private object Routes {
 
     object Main {
         const val ROUTE = "main"
@@ -79,7 +73,7 @@ object Routes {
     }
 }
 
-object Transitions {
+private object Transitions {
     val enterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition) = {
         EnterTransition.None
     }

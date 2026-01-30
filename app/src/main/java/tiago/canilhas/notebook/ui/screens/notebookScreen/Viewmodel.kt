@@ -1,165 +1,158 @@
 package tiago.canilhas.notebook.ui.screens.notebookScreen
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import tiago.canilhas.notebook.data.db.entity.Group
 import tiago.canilhas.notebook.data.db.entity.Notebook
 import tiago.canilhas.notebook.data.db.entity.Page
 import tiago.canilhas.notebook.data.db.entity.Section
+import tiago.canilhas.notebook.data.repository.GroupRepository
 import tiago.canilhas.notebook.data.repository.NotebookRepository
+import tiago.canilhas.notebook.data.repository.PageRepository
+import tiago.canilhas.notebook.data.repository.SectionRepository
+import kotlin.collections.emptyList
 
 sealed interface State {
     object Loading : State
     data class Idle(
         val notebook: Notebook,
+
+        // Data
         val sections: List<Section>,
+        val groups: List<Group>,
         val pages: List<Page>,
 
-        val currentSelectedSectionId: Long?,
-        val currentSelectedPageId: Long?,
+        // Selection
+        val selected: Selection = Selection(),
 
+        // UI Auxiliary
         val activePopup: ActivePopup? = null,
-
         val drawingState: DrawingState = DrawingState(),
-
         val isTabOpen: Boolean = true
     ) : State
     data class Error(val exception: Throwable) : State
 }
 
+enum class PopupTarget { SECTION, GROUP }
+
 sealed interface ActivePopup {
-    data class AddSection(val title: String = "") : ActivePopup
-    data class EditSection(val id: Long, val title: String) : ActivePopup
+    val title: String
+    val target: PopupTarget
+
+    data class Add(
+        override val target: PopupTarget,
+        override val title: String = ""
+    ) : ActivePopup
+
+    data class Edit(
+        val id: Long,
+        override val target: PopupTarget,
+        override val title: String
+    ) : ActivePopup
 }
+
+data class Selection(
+    val sectionId: Long? = null,
+    val groupId: Long? = null,
+    val pageId: Long? = null
+)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ViewModel(
-    private val repository: NotebookRepository
+    savedStateHandle: SavedStateHandle,
+    private val notebookRepository: NotebookRepository,
+    private val sectionRepository: SectionRepository,
+    private val groupRepository: GroupRepository,
+    private val pageRepository: PageRepository
 ) : ViewModel() {
+
+    private val notebookId: Long = checkNotNull(savedStateHandle["notebookId"])
+    private val _selection = MutableStateFlow(Selection())
+    private val drawingHelper = DrawingHelper(viewModelScope, pageRepository)
+
     private val _stateFlow = MutableStateFlow<State>(State.Loading)
     val stateFlow: StateFlow<State> = _stateFlow.asStateFlow()
 
-    private val _notebookId = MutableStateFlow<Long?>(null)
-    private val _selectedSectionId = MutableStateFlow<Long?>(null)
-    private val _selectedPageId = MutableStateFlow<Long?>(null)
-
-    private val _dataFlow: Flow<Triple<Notebook, List<Section>, List<Page>>?> =
-        _notebookId
-            .flatMapLatest { notebookId ->
-                if (notebookId == null) flowOf(null)
-                else {
-                    val notebookFlow = repository.getNotebookById(notebookId)
-                    val sectionsFlow = repository.getSectionsForNotebook(notebookId)
-
-                    combine(notebookFlow, sectionsFlow) { notebook, sections ->
-                        if (_selectedSectionId.value == null)
-                            _selectedSectionId.value = sections.firstOrNull()?.id
-
-                        Triple(notebook, sections, _selectedSectionId)
-                    }
-                }
-            }
-            .flatMapLatest { triple ->
-                if (triple !is Triple<*, *, *>) return@flatMapLatest flowOf(null)
-
-                val (notebook, sections, selectedSectionFlow) =
-                    triple as Triple<Notebook, List<Section>, StateFlow<Long?>>
-
-                selectedSectionFlow.flatMapLatest { selectedId ->
-                    val pagesFlow =
-                        if (selectedId != null) repository.getPagesForSection(selectedId)
-                        else flowOf(emptyList())
-
-                    pagesFlow.map { pages ->
-                        Triple(notebook, sections, pages)
-                    }
-                }
-            }
-            .catch { e -> _stateFlow.value = State.Error(e) }
-
     init {
+        initializeDataFlow()
+    }
+
+    private fun initializeDataFlow() {
         viewModelScope.launch {
-            _dataFlow.collect { data ->
-                if (data == null) _stateFlow.value = State.Loading
-                else {
-                    val (notebook, sections, pages) = data
+            val notebookFlow = notebookRepository.getNotebookById(notebookId)
+            val sectionsFlow = sectionRepository.getSectionsForNotebook(notebookId)
 
-                    _stateFlow.update {
-                        val idleState = it as? State.Idle
-
-                        val previousPageId = idleState?.currentSelectedPageId
-
-                        val pageIdToUse =
-                            if (pages.any { it.id == previousPageId }) previousPageId
-                            else null
-
-
-                        val drawingToUse =
-                            if (pageIdToUse != null) idleState?.drawingState ?: DrawingState()
-                            else DrawingState()
-
-                        State.Idle(
-                            notebook = notebook,
-                            sections = sections,
-                            pages = pages,
-
-                            currentSelectedSectionId = _selectedSectionId.value,
-                            currentSelectedPageId = pageIdToUse,
-
-                            activePopup = idleState?.activePopup,
-
-                            drawingState = drawingToUse,
-
-                            isTabOpen = idleState?.isTabOpen ?: true,
-                        )
-                    }
+            val groupsFlow = _selection
+                .map { it.sectionId }
+                .distinctUntilChanged()
+                .flatMapLatest { sectionId ->
+                    if (sectionId != null) groupRepository.getGroupsForSection(sectionId)
+                    else flowOf(emptyList())
                 }
+
+            val pagesFlow = _selection
+                .map { it.groupId }
+                .distinctUntilChanged()
+                .flatMapLatest { groupId ->
+                    if (groupId != null) pageRepository.getPagesForGroup(groupId)
+                    else flowOf(emptyList())
+                }
+
+            combine(
+                notebookFlow,
+                sectionsFlow,
+                groupsFlow,
+                pagesFlow,
+                _selection
+            ) { notebook, sections, groups, pages, selection ->
+
+                if (notebook == null) return@combine State.Loading
+
+                val currentIdle = _stateFlow.value as? State.Idle
+
+                val drawingToUse =
+                    if (selection.pageId != null && selection.pageId != currentIdle?.selected?.pageId){
+                        val page = pages.find { it.id == selection.pageId }
+                        val paths = drawingHelper.parseJsonToPaths(page?.content ?: "")
+                        DrawingState(paths = paths)
+                    }
+                    else currentIdle?.drawingState ?: DrawingState()
+
+                State.Idle(
+                    notebook = notebook,
+                    sections = sections,
+                    groups = groups,
+                    pages = pages,
+                    selected = selection,
+                    activePopup = currentIdle?.activePopup,
+                    drawingState = drawingToUse,
+                    isTabOpen = currentIdle?.isTabOpen ?: true
+                )
             }
+                .catch { error -> _stateFlow.value = State.Error(error) }
+                .collect { newState -> _stateFlow.value = newState }
         }
     }
 
-    private val drawingHelper = DrawingHelper(viewModelScope, repository)
-
-    fun loadNotebookData(notebookId: Long) {
-        _notebookId.value = notebookId
-    }
-
-
-    fun toggleTab() {
-        _stateFlow.update {
-            (it as? State.Idle)
-                ?.let { idleState -> idleState.copy(isTabOpen = !idleState.isTabOpen) }
-                ?: it
-        }
-    }
-
-    /**
-     * Section
-     */
+    // ============================================================================================
+    // NAVIGATION & SELECTION
+    // ============================================================================================
 
     fun onSectionSelected(sectionId: Long) {
-        _selectedSectionId.value = sectionId
-
-        _stateFlow.update {
-            (it as? State.Idle)
-                ?.copy(
-                    currentSelectedSectionId = sectionId,
-                    currentSelectedPageId = null,
-                    drawingState = DrawingState()
-                )
-                ?: it
-        }
+        _selection.update { current -> current.copy(sectionId = sectionId, groupId = null, pageId = null) }
     }
 
     fun onSectionLongClicked(sectionId: Long) {
@@ -169,9 +162,10 @@ class ViewModel(
             if (section != null) {
                 _stateFlow.update {
                     currentState.copy(
-                        activePopup = ActivePopup.EditSection(
+                        activePopup = ActivePopup.Edit(
                             id = section.id,
-                            title = section.name
+                            target = PopupTarget.SECTION,
+                            title = section.title
                         )
                     )
                 }
@@ -181,22 +175,77 @@ class ViewModel(
 
     fun onAddSection() {
         _stateFlow.update {
-            (it as? State.Idle)?.copy(activePopup = ActivePopup.AddSection()) ?: it
+            (it as? State.Idle)?.copy(activePopup = ActivePopup.Add(
+                target = PopupTarget.SECTION
+            ) ) ?: it
+        }
+    }
+
+    fun onGroupSelected(groupId: Long) {
+        _selection.update { current -> current.copy(groupId = groupId, pageId = null) }
+    }
+
+    fun onGroupLongClicked(groupId: Long) {
+        val currentState = _stateFlow.value
+        if (currentState is State.Idle) {
+            val group = currentState.groups.find { it.id == groupId }
+            if (group != null) {
+                _stateFlow.update {
+                    currentState.copy(
+                        activePopup = ActivePopup.Edit(
+                            id = group.id,
+                            target = PopupTarget.GROUP,
+                            title = group.title
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    fun onAddGroup() {
+        _stateFlow.update {
+            (it as? State.Idle)?.copy(activePopup = ActivePopup.Add(
+                target = PopupTarget.GROUP
+            ) ) ?: it
+        }
+    }
+
+    fun onPageSelected(pageId: Long) {
+        _selection.update { current -> current.copy(pageId = pageId) }
+    }
+
+    fun toggleTab() {
+        _stateFlow.update {
+            (it as? State.Idle)
+                ?.let { idleState -> idleState.copy(isTabOpen = !idleState.isTabOpen) }
+                ?: it
+        }
+    }
+
+
+
+    // ============================================================================================
+    // POPUP MANAGEMENT
+    // ============================================================================================
+
+    private fun updatePopup(popup: ActivePopup?) {
+        _stateFlow.update { state ->
+            (state as? State.Idle)?.copy(activePopup = popup) ?: state
         }
     }
 
     fun onPopupNameChange(newName: String) {
-        _stateFlow.update { it ->
-            (it as? State.Idle)?.let { idleState ->
-                val updatedPopup =
-                    when (val popup = idleState.activePopup) {
-                        is ActivePopup.AddSection -> popup.copy(title = newName)
-                        is ActivePopup.EditSection -> popup.copy(title = newName)
-                        else -> return@let idleState
-                    }
+        _stateFlow.update { state ->
+            val idle = state as? State.Idle ?: return@update state
 
-                idleState.copy(activePopup = updatedPopup)
-            } ?: it
+            val updatedPopup = when (val popup = idle.activePopup) {
+                is ActivePopup.Add -> popup.copy(title = newName)
+                is ActivePopup.Edit -> popup.copy(title = newName)
+                else -> popup
+            }
+
+            idle.copy(activePopup = updatedPopup)
         }
     }
 
@@ -206,15 +255,15 @@ class ViewModel(
         }
     }
 
+
+
+    // ============================================================================================
+    // SECTION CRUD OPERATIONS
+    // ============================================================================================
+
     fun createNewSection() {
         val currentState = _stateFlow.value
-        val notebookId = _notebookId.value
-        if (
-            currentState is State.Idle
-            && notebookId != null
-            && currentState.activePopup is ActivePopup.AddSection
-            ) {
-
+        if (currentState is State.Idle && currentState.activePopup is ActivePopup.Add) {
             val name = currentState.activePopup.title
 
             _stateFlow.update {
@@ -223,8 +272,7 @@ class ViewModel(
 
             viewModelScope.launch {
                 try {
-                    val newSection = Section(notebookId = notebookId, name = name)
-                    repository.insertSection(newSection)
+                    sectionRepository.insertSection(notebookId, name)
                 } catch (e: Throwable) {
                     _stateFlow.value = State.Error(e)
                 }
@@ -234,10 +282,7 @@ class ViewModel(
 
     fun updateSection() {
         val currentState = _stateFlow.value
-        if (
-            currentState is State.Idle
-            && currentState.activePopup is ActivePopup.EditSection
-        ) {
+        if (currentState is State.Idle && currentState.activePopup is ActivePopup.Edit) {
             val sectionId = currentState.activePopup.id
             val newName = currentState.activePopup.title
 
@@ -250,8 +295,8 @@ class ViewModel(
             viewModelScope.launch {
                 try {
                     if (section != null) {
-                        val updatedSection = section.copy(name = newName)
-                        repository.updateSection(updatedSection)
+                        val updatedSection = section.copy(title = newName)
+                        sectionRepository.updateSection(updatedSection)
                     }
                 } catch (e: Throwable) {
                     _stateFlow.value = State.Error(e)
@@ -262,37 +307,74 @@ class ViewModel(
 
 
 
-    /**
-     * Page
-     */
+    // ============================================================================================
+    // GROUP CRUD OPERATIONS
+    // ============================================================================================
 
-    fun onPageSelected(pageId: Long) {
-        _selectedPageId.value = pageId
-
+    fun createNewGroup() {
         val currentState = _stateFlow.value
-        if (currentState is State.Idle) {
-            val page = currentState.pages.find { it.id == pageId }
-            val paths = drawingHelper.parseJsonToPaths(page?.content ?: "")
-            _stateFlow.update {
-                (it as? State.Idle)
-                    ?.copy(
-                        drawingState = DrawingState(paths = paths),
-                        currentSelectedPageId = pageId
-                    )
-                    ?: it
+        if (currentState is State.Idle && currentState.activePopup is ActivePopup.Add) {
+            val sectionId = currentState.selected.sectionId
+            val title = currentState.activePopup.title
+
+            if (sectionId != null) {
+                _stateFlow.update {
+                    currentState.copy(activePopup = null)
+                }
+
+                viewModelScope.launch {
+                    try {
+                        groupRepository.insertGroup(sectionId, title)
+                    } catch (e: Throwable) {
+                        _stateFlow.value = State.Error(e)
+                    }
+                }
             }
         }
+
     }
 
-    fun createNewPage() {
+    fun updateGroup() {
         val currentState = _stateFlow.value
-        if (currentState is State.Idle && currentState.currentSelectedSectionId != null) {
-            val sectionId = currentState.currentSelectedSectionId
+        if (currentState is State.Idle && currentState.activePopup is ActivePopup.Edit) {
+            val groupId = currentState.activePopup.id
+            val newTitle = currentState.activePopup.title
+
+            _stateFlow.update {
+                currentState.copy(activePopup = null)
+            }
+
+            val group = currentState.groups.find { it.id == groupId }
 
             viewModelScope.launch {
                 try {
-                    val newPage = Page.create(sectionId = sectionId)
-                    repository.insertPage(newPage)
+                    if (group != null) {
+                        val updatedGroup = group.copy(title = newTitle)
+                        groupRepository.updateGroup(updatedGroup)
+                    }
+                } catch (e: Throwable) {
+                    _stateFlow.value = State.Error(e)
+                }
+            }
+        }
+
+
+    }
+
+
+
+    // ============================================================================================
+    // PAGE CRUD OPERATIONS
+    // ============================================================================================
+
+    fun createNewPage() {
+        val currentState = _stateFlow.value
+        if (currentState is State.Idle && currentState.selected.groupId != null) {
+            val groupId = currentState.selected.groupId
+
+            viewModelScope.launch {
+                try {
+                    pageRepository.insertPage(groupId)
 
                 } catch (e: Throwable) {
                     _stateFlow.value = State.Error(e)
@@ -300,6 +382,12 @@ class ViewModel(
             }
         }
     }
+
+
+
+    // ============================================================================================
+    // DRAWING & CANVAS
+    // ============================================================================================
 
     fun onNewStroke(newPath: PathData) {
         _stateFlow.update {
@@ -315,7 +403,7 @@ class ViewModel(
 
         val currentState = _stateFlow.value
         if (currentState is State.Idle) {
-            val page = currentState.pages.find { it.id == _selectedPageId.value }
+            val page = currentState.pages.find { it.id == _selection.value.pageId }
 
             if (page != null) {
                 drawingHelper.saveDrawingWithDebounce(

@@ -4,37 +4,49 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import tiago.canilhas.notebook.data.db.dao.PageDao
 
 @Entity(
     tableName = "pages",
     foreignKeys = [
         ForeignKey(
-            entity = Section::class,
+            entity = Group::class,
             parentColumns = ["id"],
-            childColumns = ["sectionId"],
+            childColumns = ["groupId"],
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["sectionId"])]
+    indices = [Index(value = ["groupId"])]
 )
 data class Page(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    val sectionId: Long,
+    val groupId: Long,
     var title: String,
-    var content: String,
+    var order: Int,
+
+    val width: Float = 1080f,
+    val height: Float = 1920f,
+    var content: String = "",
     val createdAt: Long = System.currentTimeMillis(),
     var updatedAt: Long = System.currentTimeMillis()
 ) {
     companion object {
-        fun create(sectionId: Long): Page {
-            val currentTime = System.currentTimeMillis()
+        fun create(
+            groupId: Long,
+            nextOrder: Int
+        ): Page {
+            val time = System.currentTimeMillis()
+
             return Page(
-                sectionId = sectionId,
+                groupId = groupId,
                 title = "New Page",
+                order = nextOrder,
+                width = 1080f,
+                height = 1920f,
                 content = "",
-                createdAt = currentTime,
-                updatedAt = currentTime
+                createdAt = time,
+                updatedAt = time
             )
         }
     }

@@ -20,7 +20,12 @@ class MainActivity : ComponentActivity() {
 
         val appContainer = (application as Container)
 
-        val factory = AppViewModelFactory(appContainer.repository)
+        val factory = AppViewModelFactory(
+            appContainer.notebookRepository,
+            appContainer.sectionRepository,
+            appContainer.groupRepository,
+            appContainer.pageRepository,
+        )
 
         setContent {
             NotebookTheme {

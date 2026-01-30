@@ -16,8 +16,11 @@ interface SectionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(section: Section): Long
 
-    @Query("SELECT * FROM sections WHERE notebookId = :notebookId ORDER BY name ASC")
+    @Query("SELECT * FROM sections WHERE notebookId = :notebookId ORDER BY title ASC")
     fun getSectionsForNotebook(notebookId: Long): Flow<List<Section>>
+
+    @Query("SELECT MAX(`order`) FROM sections WHERE notebookId = :notebookId")
+    suspend fun getMaxOrder(notebookId: Long): Int?
 
     @Update
     suspend fun update(section: Section)

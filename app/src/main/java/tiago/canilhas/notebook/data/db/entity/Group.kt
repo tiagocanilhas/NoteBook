@@ -6,35 +6,33 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(
-    tableName = "sections",
+    tableName = "groups",
     foreignKeys = [
         ForeignKey(
-            entity = Notebook::class,
+            entity = Section::class,
             parentColumns = ["id"],
-            childColumns = ["notebookId"],
+            childColumns = ["sectionId"],
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["notebookId"])]
+    indices = [Index(value = ["sectionId"])]
 )
-data class Section(
+data class Group(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    val notebookId: Long,
-    val title: String,
-    val order: Int
+    val sectionId: Long,
+    var title: String,
+    var order: Int,
 ) {
     companion object {
         fun create(
-            notebookId: Long,
+            sectionId: Long,
             title: String,
             nextOrder: Int
-        ): Section {
-            return Section(
-                notebookId = notebookId,
-                title = title,
-                order = nextOrder
-            )
-        }
+        ) = Group(
+            sectionId = sectionId,
+            title = title,
+            order = nextOrder
+        )
     }
 }

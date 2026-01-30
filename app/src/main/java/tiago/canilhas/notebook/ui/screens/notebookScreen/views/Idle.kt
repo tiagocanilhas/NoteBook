@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import tiago.canilhas.notebook.R
+import tiago.canilhas.notebook.data.db.entity.Group
 import tiago.canilhas.notebook.data.db.entity.Notebook
 import tiago.canilhas.notebook.data.db.entity.Page
 import tiago.canilhas.notebook.data.db.entity.Section
@@ -38,27 +39,33 @@ import tiago.canilhas.notebook.ui.screens.notebookScreen.PathData
 @Composable
 fun IdleView(
     notebook: Notebook,
-    sections: List<Section>,
-    pages: List<Page>,
-    currentSelectedSectionId: Long?,
-    currentSelectedPageId: Long?,
 
+    sections: List<Section>,
+    currentSelectedSectionId: Long?,
     onSectionSelected: (Long) -> Unit,
     onSectionLongClicked: (Long) -> Unit,
     onAddSection: () -> Unit,
+
+    groups: List<Group>,
+    currentSelectedGroupId: Long?,
+    onGroupSelected: (Long) -> Unit,
+    onGroupLongClicked: (Long) -> Unit,
+    onAddGroup: () -> Unit,
+
+    pages: List<Page>,
+    currentSelectedPageId: Long?,
     onPageSelected: (Long) -> Unit,
     onAddPage: () -> Unit,
+
     onBackClicked: () -> Unit,
 
     drawingState: DrawingState,
     onNewStroke: (PathData) -> Unit,
 
     isTabOpen: Boolean,
-    toggleTab: () -> Unit,
+    toggleTab: () -> Unit
 ) {
-    val tabWidth =
-        if (currentSelectedSectionId == null) Tab.TAB_FULL_WIDTH.dp
-        else (Tab.TAB_FULL_WIDTH * 2).dp
+    val tabWidth = (Tab.TAB_FULL_WIDTH * 3).dp
 
     val animationWidth by animateDpAsState(
         targetValue = if (isTabOpen) tabWidth else 0.dp,
@@ -85,14 +92,22 @@ fun IdleView(
                     Box(modifier = Modifier.layoutId("tab")) {
                         NotebookPageSelectionTab(
                             sections = sections,
-                            pages = pages,
                             currentSelectedSectionId = currentSelectedSectionId,
-                            currentSelectedPageId = currentSelectedPageId,
                             onSectionSelected = onSectionSelected,
                             onSectionLongClicked = onSectionLongClicked,
                             onAddSection = onAddSection,
+
+                            groups = groups,
+                            currentSelectedGroupId = currentSelectedGroupId,
+                            onGroupSelected = onGroupSelected,
+                            onGroupLongClicked = onGroupLongClicked,
+                            onAddGroup = onAddGroup,
+
+                            pages = pages,
+                            currentSelectedPageId = currentSelectedPageId,
                             onPageSelected = onPageSelected,
                             onAddPage = onAddPage,
+
                             modifier = Modifier.fillMaxHeight()
                         )
                     }
@@ -165,27 +180,50 @@ fun IdleView(
 @Preview
 @Composable
 fun IdleViewPreview() {
+
+    val sections = listOf(
+        Section(id = 1, notebookId = 1, title = "Section 1", order = 1),
+        Section(id = 2, notebookId = 1, title = "Section 2", order = 2),
+        Section(id = 3, notebookId = 1, title = "Section 3", order = 3),
+    )
+
+    val groups = listOf(
+        Group(id = 1, sectionId = 1, title = "Group 1", order = 1),
+        Group(id = 2, sectionId = 1, title = "Group 2", order = 2),
+    )
+
+    val pages = listOf(
+        Page(id = 1, groupId = 1, title = "Page 1", order = 1, content = "Content 1"),
+        Page(id = 2, groupId = 1, title = "Page 2", order = 2, content = "Content 2"),
+        Page(id = 3, groupId = 1, title = "Page 3", order = 3, content = "Content 3"),
+    )
+
+
     IdleView(
         notebook = Notebook(id = 1, name = "My Notebook", colorHex = "#FFFFFF"),
-        sections = listOf(
-            Section(id = 1, notebookId = 1, name = "Section 1"),
-            Section(id = 2, notebookId = 1, name = "Section 2"),
-            Section(id = 3, notebookId = 1, name = "Section 3")
-        ),
-        pages = listOf(
-            Page(id = 1, sectionId = 1, title = "Page 1", content = ""),
-            Page(id = 2, sectionId = 1, title = "Page 2", content = ""),
-        ),
+
+        sections = sections,
         currentSelectedSectionId = 1,
-        currentSelectedPageId = 1,
         onSectionSelected = {},
         onSectionLongClicked = {},
         onAddSection = {},
+
+        groups = groups,
+        currentSelectedGroupId = 1,
+        onGroupSelected = {},
+        onGroupLongClicked = {},
+        onAddGroup = {},
+
+        pages = pages,
+        currentSelectedPageId = 1,
         onPageSelected = {},
         onAddPage = {},
+
         onBackClicked = {},
-        drawingState = DrawingState(),
+
+        drawingState = DrawingState(paths = emptyList()),
         onNewStroke = {},
+
         isTabOpen = true,
         toggleTab = {}
     )

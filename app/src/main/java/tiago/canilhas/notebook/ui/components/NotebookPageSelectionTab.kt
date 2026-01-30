@@ -6,49 +6,61 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.tooling.preview.Preview
 import tiago.canilhas.notebook.R
+import tiago.canilhas.notebook.data.db.entity.Group
 import tiago.canilhas.notebook.data.db.entity.Page
 import tiago.canilhas.notebook.data.db.entity.Section
 
 @Composable
 fun NotebookPageSelectionTab(
+    // Sections
     sections: List<Section>,
-    pages: List<Page>,
     currentSelectedSectionId: Long?,
-    currentSelectedPageId: Long?,
     onSectionSelected: (Long) -> Unit,
     onSectionLongClicked: (Long) -> Unit,
     onAddSection: () -> Unit,
+
+    // Groups
+    groups: List<Group>,
+    currentSelectedGroupId: Long?,
+    onGroupSelected: (Long) -> Unit,
+    onGroupLongClicked: (Long) -> Unit,
+    onAddGroup: () -> Unit,
+
+    // Pages
+    pages: List<Page>,
+    currentSelectedPageId: Long?,
     onPageSelected: (Long) -> Unit,
     onAddPage: () -> Unit,
+
     modifier: Modifier = Modifier
 ) {
     Row (
         modifier = modifier
     ){
         ScrollableTab(
-            options = sections.map { it.name },
+            options = sections.map { it.title },
             selectedIndex = sections.indexOfFirst { it.id == currentSelectedSectionId },
-            backgroundColor = colorResource(R.color.section_tab_background),
-            optionSelectedColor = colorResource(R.color.section_tab_option_selected),
-            optionUnselectedColor = colorResource(R.color.section_tab_option_unselected),
-            addColor = colorResource(R.color.section_tab_add),
             onOptionSelected = { idx -> onSectionSelected(sections[idx].id) },
             onOptionLongClicked = { idx -> onSectionLongClicked(sections[idx].id) },
             onAddClicked = onAddSection
         )
 
-        if (currentSelectedSectionId != null)
-            ScrollableTab(
-                options = pages.map { it.title },
-                selectedIndex = pages.indexOfFirst { it.id == currentSelectedPageId },
-                backgroundColor = colorResource(R.color.page_tab_background),
-                optionSelectedColor = colorResource(R.color.page_tab_option_selected),
-                optionUnselectedColor = colorResource(R.color.page_tab_option_unselected),
-                addColor = colorResource(R.color.page_tab_add),
-                onOptionSelected = { idx -> onPageSelected(pages[idx].id) },
-                onOptionLongClicked = { _ -> },
-                onAddClicked = onAddPage
-            )
+        ScrollableTab(
+            options = groups.map { it.title },
+            selectedIndex = groups.indexOfFirst { it.id == currentSelectedGroupId },
+            onOptionSelected = { idx -> onGroupSelected(groups[idx].id) },
+            onOptionLongClicked = { idx -> onGroupLongClicked(groups[idx].id) },
+            onAddClicked = onAddGroup,
+            disabled = currentSelectedSectionId == null,
+        )
+
+        ScrollableTab(
+            options = pages.map { it.title },
+            selectedIndex = pages.indexOfFirst { it.id == currentSelectedPageId },
+            onOptionSelected = { idx -> onPageSelected(pages[idx].id) },
+            onAddClicked = onAddPage,
+            disabled = currentSelectedGroupId == null,
+        )
     }
 }
 
@@ -56,25 +68,37 @@ fun NotebookPageSelectionTab(
 @Composable
 fun NotebookPageSelectionTabPreview() {
     val sections = listOf(
-        Section(id = 1, notebookId = 1, name = "Section 1"),
-        Section(id = 2, notebookId = 1, name = "Section 2"),
-        Section(id = 3, notebookId = 1, name = "Section 3"),
+        Section(id = 1, notebookId = 1, title = "Section 1", order = 1),
+        Section(id = 2, notebookId = 1, title = "Section 2", order = 2),
+        Section(id = 3, notebookId = 1, title = "Section 3", order = 3),
+    )
+
+    val groups = listOf(
+        Group(id = 1, sectionId = 1, title = "Group 1", order = 1),
+        Group(id = 2, sectionId = 1, title = "Group 2", order = 2),
     )
 
     val pages = listOf(
-        Page(id = 1, sectionId = 1, title = "Page 1", content = "Content 1"),
-        Page(id = 2, sectionId = 1, title = "Page 2", content = "Content 2"),
-        Page(id = 3, sectionId = 1, title = "Page 3", content = "Content 3"),
+        Page(id = 1, groupId = 1, title = "Page 1", order = 1, content = "Content 1"),
+        Page(id = 2, groupId = 1, title = "Page 2", order = 2, content = "Content 2"),
+        Page(id = 3, groupId = 1, title = "Page 3", order = 3, content = "Content 3"),
     )
 
     NotebookPageSelectionTab(
         sections = sections,
-        pages = pages,
         currentSelectedSectionId = 1,
-        currentSelectedPageId = 2,
         onSectionSelected = {},
-        onAddSection = {},
         onSectionLongClicked = {},
+        onAddSection = {},
+
+        groups = groups,
+        currentSelectedGroupId = 1,
+        onGroupSelected = {},
+        onGroupLongClicked = {},
+        onAddGroup = {},
+
+        pages = pages,
+        currentSelectedPageId = 1,
         onPageSelected = {},
         onAddPage = {}
     )

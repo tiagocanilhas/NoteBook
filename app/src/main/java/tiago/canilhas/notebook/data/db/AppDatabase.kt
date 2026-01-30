@@ -2,9 +2,11 @@ package tiago.canilhas.notebook.data.db
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import tiago.canilhas.notebook.data.db.dao.GroupDao
 import tiago.canilhas.notebook.data.db.dao.NotebookDao
 import tiago.canilhas.notebook.data.db.dao.PageDao
 import tiago.canilhas.notebook.data.db.dao.SectionDao
+import tiago.canilhas.notebook.data.db.entity.Group
 import tiago.canilhas.notebook.data.db.entity.Notebook
 import tiago.canilhas.notebook.data.db.entity.Page
 import tiago.canilhas.notebook.data.db.entity.Section
@@ -13,6 +15,7 @@ import tiago.canilhas.notebook.data.db.entity.Section
     entities = [
         Notebook::class,
         Section::class,
+        Group::class,
         Page::class
     ],
     version = 1,
@@ -21,5 +24,6 @@ import tiago.canilhas.notebook.data.db.entity.Section
 abstract class AppDatabase : RoomDatabase() {
     abstract fun notebookDao(): NotebookDao
     abstract fun sectionDao(): SectionDao
+    abstract fun groupDao(): GroupDao
     abstract fun pageDao(): PageDao
 }

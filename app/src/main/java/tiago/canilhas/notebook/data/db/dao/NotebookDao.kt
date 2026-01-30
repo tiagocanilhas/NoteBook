@@ -19,7 +19,7 @@ interface NotebookDao {
     fun getAllNotebooks(): Flow<List<Notebook>>
 
     @Query("SELECT * FROM notebooks WHERE id = :notebookId")
-    fun getNotebookById(notebookId: Long): Flow<Notebook>
+    fun getNotebookById(notebookId: Long): Flow<Notebook?>
 
     @Update
     suspend fun update(notebook: Notebook)

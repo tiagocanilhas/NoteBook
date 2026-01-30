@@ -13,32 +13,51 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import tiago.canilhas.notebook.R
+import kotlin.apply
 
 @Composable
 fun ScrollableTab(
     options: List<String>,
     selectedIndex: Int,
-    backgroundColor: Color,
-    optionSelectedColor: Color,
-    optionUnselectedColor: Color,
-    addColor: Color,
     onOptionSelected: (Int) -> Unit,
-    onOptionLongClicked: (Int) -> Unit,
-    onAddClicked: () -> Unit
+    onOptionLongClicked: (Int) -> Unit = {},
+    onAddClicked: () -> Unit,
+    backgroundColor: Color = colorResource(R.color.page_tab_background),
+    optionSelectedColor: Color = colorResource(R.color.page_tab_option_selected),
+    optionUnselectedColor: Color = colorResource(R.color.page_tab_option_unselected),
+    addColor: Color = colorResource(R.color.page_tab_add),
+    disabled: Boolean = false
 ) {
+
+    val colorMatrix = remember(disabled) {
+        ColorMatrix().apply { setToSaturation(if (disabled) 0f else 1f) }
+    }
+
     Column(
         modifier = Modifier
+            .graphicsLayer {
+                alpha = if (disabled) 0.7f else 1f
+                colorFilter = ColorFilter.colorMatrix(colorMatrix)
+            }
+            .border(Tab.TAB_BORDER_SIZE.dp, Tab.BORDER_COLOR)
             .background(color = backgroundColor)
-            .border(Tab.TAB_BORDER_SIZE.dp, Tab.BORDER_COLOR),
+            .then(
+                if (disabled) Modifier.pointerInput(Unit) {} else Modifier
+            ),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         LazyColumn(
@@ -62,7 +81,6 @@ fun ScrollableTab(
             onAddSelected = onAddClicked
         )
     }
-
 }
 
 object Tab {
@@ -149,6 +167,7 @@ fun ScrollableTabPreview() {
         addColor = colorResource(R.color.section_tab_add),
         onOptionSelected = {},
         onOptionLongClicked = {},
-        onAddClicked = {}
+        onAddClicked = {},
+        disabled = true
     )
 }

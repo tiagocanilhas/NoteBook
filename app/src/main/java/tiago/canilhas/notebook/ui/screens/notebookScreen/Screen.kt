@@ -22,43 +22,64 @@ fun Screen(
         is State.Idle -> {
             IdleView(
                 notebook = state.notebook,
+
                 sections = state.sections,
-                pages = state.pages,
-                currentSelectedSectionId = state.currentSelectedSectionId,
-                currentSelectedPageId = state.currentSelectedPageId,
+                currentSelectedSectionId = state.selected.sectionId,
                 onSectionSelected = viewModel::onSectionSelected,
                 onSectionLongClicked = viewModel::onSectionLongClicked,
                 onAddSection = viewModel::onAddSection,
+
+                groups = state.groups,
+                currentSelectedGroupId = state.selected.groupId,
+                onGroupSelected = viewModel::onGroupSelected,
+                onGroupLongClicked = viewModel::onGroupLongClicked,
+                onAddGroup = viewModel::onAddGroup,
+
+                pages = state.pages,
+                currentSelectedPageId = state.selected.pageId,
                 onPageSelected = viewModel::onPageSelected,
                 onAddPage = viewModel::createNewPage,
+
                 onBackClicked = onBackClicked,
-                isTabOpen = state.isTabOpen,
+
                 drawingState = state.drawingState,
                 onNewStroke = viewModel::onNewStroke,
+
+                isTabOpen = state.isTabOpen,
                 toggleTab = viewModel::toggleTab
             )
 
             if (state.activePopup != null) {
-                when (state.activePopup) {
-                    is ActivePopup.AddSection -> Popup(
-                        placeholder = stringResource(id = R.string.enter_section_name),
-                        value = state.activePopup.title,
-                        onValueChange = viewModel::onPopupNameChange,
-                        onAccept = viewModel::createNewSection,
-                        onAcceptText = stringResource(id = R.string.create),
-                        onDismiss = viewModel::onDismissPopup
-                    )
 
-                    is ActivePopup.EditSection -> Popup(
-                        placeholder = stringResource(id = R.string.enter_section_name),
-                        value = state.activePopup.title,
-                        onValueChange = viewModel::onPopupNameChange,
-                        onAccept = viewModel::updateSection,
-                        onAcceptText = stringResource(id = R.string.save),
-                        onDismiss = viewModel::onDismissPopup
-                    )
+                val placeholder = when (state.activePopup.target) {
+                    PopupTarget.SECTION -> stringResource(id = R.string.enter_section_name)
+                    PopupTarget.GROUP -> stringResource(id = R.string.enter_group_name)
                 }
 
+                val onAcceptAction = when (state.activePopup.target) {
+                    PopupTarget.SECTION -> when (state.activePopup) {
+                        is ActivePopup.Add -> viewModel::createNewSection
+                        is ActivePopup.Edit -> viewModel::updateSection
+                    }
+                    PopupTarget.GROUP -> when (state.activePopup) {
+                        is ActivePopup.Add -> viewModel::createNewGroup
+                        is ActivePopup.Edit -> viewModel::updateGroup
+                    }
+                }
+
+                val onAcceptText = when (state.activePopup) {
+                    is ActivePopup.Add -> stringResource(id = R.string.create)
+                    is ActivePopup.Edit -> stringResource(id = R.string.save)
+                }
+
+                Popup(
+                    placeholder = placeholder,
+                    value = state.activePopup.title,
+                    onValueChange = viewModel::onPopupNameChange,
+                    onAccept = onAcceptAction,
+                    onAcceptText = onAcceptText,
+                    onDismiss = viewModel::onDismissPopup
+                )
             }
         }
 

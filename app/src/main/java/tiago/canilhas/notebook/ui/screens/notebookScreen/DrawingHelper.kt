@@ -7,11 +7,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import tiago.canilhas.notebook.data.db.entity.Page
-import tiago.canilhas.notebook.data.repository.NotebookRepository
+import tiago.canilhas.notebook.data.repository.PageRepository
 
 class DrawingHelper(
     private val scope: CoroutineScope,
-    private val repository: NotebookRepository
+    private val repository: PageRepository
 ) {
     private val gson = Gson()
     private var saveJob: Job? = null
