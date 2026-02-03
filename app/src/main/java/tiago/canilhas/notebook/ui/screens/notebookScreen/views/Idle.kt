@@ -14,6 +14,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -56,6 +57,7 @@ fun IdleView(
     currentSelectedPageId: Long?,
     onPageSelected: (Long) -> Unit,
     onAddPage: () -> Unit,
+    onPageNameChange: (String) -> Unit,
 
     onBackClicked: () -> Unit,
 
@@ -114,14 +116,18 @@ fun IdleView(
 
                 Box(modifier = Modifier.layoutId("canvas")) {
                     if (currentSelectedPageId != null) {
-                        DrawingCanvas(
-                            paths = drawingState.paths,
-                            onPathEnd = onNewStroke,
-                            currentPath = null,
-                            onNewPathStart = {},
-                            onPathUpdate = {},
-                            modifier = Modifier.fillMaxSize()
-                        )
+                        key(currentSelectedPageId) {
+                            DrawingCanvas(
+                                title = drawingState.pageTitle,
+                                onTitleChange = onPageNameChange,
+                                paths = drawingState.paths,
+                                onPathEnd = onNewStroke,
+                                currentPath = null,
+                                onNewPathStart = {},
+                                onPathUpdate = {},
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
                     } else {
                         Box(
                             modifier = Modifier
@@ -218,6 +224,7 @@ fun IdleViewPreview() {
         currentSelectedPageId = 1,
         onPageSelected = {},
         onAddPage = {},
+        onPageNameChange = {},
 
         onBackClicked = {},
 

@@ -4,15 +4,21 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import tiago.canilhas.notebook.data.db.entity.Group
@@ -70,6 +76,11 @@ data class Selection(
     val pageId: Long? = null
 )
 
+data class PendingTitleUpdate(
+    val pageId: Long,
+    val newTitle: String
+)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class ViewModel(
     savedStateHandle: SavedStateHandle,
@@ -82,12 +93,18 @@ class ViewModel(
     private val notebookId: Long = checkNotNull(savedStateHandle["notebookId"])
     private val _selection = MutableStateFlow(Selection())
     private val drawingHelper = DrawingHelper(viewModelScope, pageRepository)
+    private val _titleDebounce = MutableSharedFlow<PendingTitleUpdate>(
+        replay = 0,
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
 
     private val _stateFlow = MutableStateFlow<State>(State.Loading)
     val stateFlow: StateFlow<State> = _stateFlow.asStateFlow()
 
     init {
         initializeDataFlow()
+        observePageTitleDebounce()
     }
 
     private fun initializeDataFlow() {
@@ -127,7 +144,10 @@ class ViewModel(
                     if (selection.pageId != null && selection.pageId != currentIdle?.selected?.pageId){
                         val page = pages.find { it.id == selection.pageId }
                         val paths = drawingHelper.parseJsonToPaths(page?.content ?: "")
-                        DrawingState(paths = paths)
+                        DrawingState(
+                            pageTitle = page?.title ?: "",
+                            paths = paths
+                        )
                     }
                     else currentIdle?.drawingState ?: DrawingState()
 
@@ -145,6 +165,22 @@ class ViewModel(
                 .catch { error -> _stateFlow.value = State.Error(error) }
                 .collect { newState -> _stateFlow.value = newState }
         }
+    }
+
+    @OptIn(FlowPreview::class)
+    private fun observePageTitleDebounce() {
+        _titleDebounce
+            .debounce(2000L)
+            .distinctUntilChanged()
+            .onEach { pendingUpdate ->
+                val newPage = (_stateFlow.value as? State.Idle)
+                    ?.pages
+                    ?.find { it.id == pendingUpdate.pageId }
+                    ?.copy(title = pendingUpdate.newTitle)!!
+
+                pageRepository.updatePage(newPage)
+            }
+            .launchIn(viewModelScope)
     }
 
     // ============================================================================================
@@ -388,6 +424,18 @@ class ViewModel(
     // ============================================================================================
     // DRAWING & CANVAS
     // ============================================================================================
+
+    fun updatePageName(newTitle: String) {
+        _stateFlow.update {
+            (it as? State.Idle)?.copy(drawingState = it.drawingState.copy(pageTitle = newTitle)) ?: it
+        }
+        _titleDebounce.tryEmit(
+            PendingTitleUpdate(
+                pageId = checkNotNull(_selection.value.pageId),
+                newTitle = newTitle
+            )
+        )
+    }
 
     fun onNewStroke(newPath: PathData) {
         _stateFlow.update {

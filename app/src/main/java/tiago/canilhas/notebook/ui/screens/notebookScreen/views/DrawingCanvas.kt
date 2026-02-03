@@ -3,7 +3,10 @@ package tiago.canilhas.notebook.ui.screens.notebookScreen.views
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -14,82 +17,92 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.tooling.preview.Preview
+import tiago.canilhas.notebook.ui.components.TextFieldWithoutBackground
 import tiago.canilhas.notebook.ui.screens.notebookScreen.PathData
 import tiago.canilhas.notebook.ui.screens.notebookScreen.createPathData
 
 @Composable
 fun DrawingCanvas(
-    paths: List<PathData>, // Os traços antigos (da BD)
-    currentPath: PathData?, // (Opcional: se quiser passar o traço atual do VM)
+    title: String,
+    onTitleChange: (String) -> Unit,
+    paths: List<PathData>,
+    currentPath: PathData?,
 
-    onNewPathStart: (Offset) -> Unit, // (Opcional: para lógica avançada)
-    onPathUpdate: (Offset) -> Unit,   // (Opcional)
-    onPathEnd: (PathData) -> Unit,    // O MAIS IMPORTANTE: Envia o traço final
+    onNewPathStart: (Offset) -> Unit,
+    onPathUpdate: (Offset) -> Unit,
+    onPathEnd: (PathData) -> Unit,
 
     modifier: Modifier = Modifier
 ) {
     val tempPathPoints = remember { mutableStateListOf<Offset>() }
 
-    Canvas(
-        modifier = modifier
-            .background(Color.White)
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragStart = { offset ->
-                        tempPathPoints.clear()
-                        tempPathPoints.add(offset)
-                        // onNewPathStart(offset)
-                    },
-                    onDrag = { change, _ ->
-                        change.consume()
-                        tempPathPoints.add(change.position)
-                        // onPathUpdate(change.position)
-                    },
-                    onDragEnd = {
-                        if (tempPathPoints.isNotEmpty()) {
-
-                            val newPath = createPathData(
-                                offsets = tempPathPoints.toList(),
-                                color = Color.Black,
-                                width = 5f
-                            )
-
-                            onPathEnd(newPath)
+    Box(modifier = modifier){
+        Canvas(
+            modifier = Modifier
+                .background(Color.White)
+                .pointerInput(Unit) {
+                    detectDragGestures(
+                        onDragStart = { offset ->
                             tempPathPoints.clear()
+                            tempPathPoints.add(offset)
+                            // onNewPathStart(offset)
+                        },
+                        onDrag = { change, _ ->
+                            change.consume()
+                            tempPathPoints.add(change.position)
+                            // onPathUpdate(change.position)
+                        },
+                        onDragEnd = {
+                            if (tempPathPoints.isNotEmpty()) {
+
+                                val newPath = createPathData(
+                                    offsets = tempPathPoints.toList(),
+                                    color = Color.Black,
+                                    width = 5f
+                                )
+
+                                onPathEnd(newPath)
+                                tempPathPoints.clear()
+                            }
                         }
-                    }
-                )
-            }
-    ) {
-        // Old paths from the database
-        paths.forEach { pathData ->
-            drawPathData(pathData)
-        }
-
-        // Current temporary path being drawn
-        if (tempPathPoints.isNotEmpty()) {
-            val path = Path()
-
-            path.moveTo(tempPathPoints.first().x, tempPathPoints.first().y)
-
-            for (i in 1 until tempPathPoints.size) {
-                path.lineTo(tempPathPoints[i].x, tempPathPoints[i].y)
+                    )
+                }
+        ) {
+            // Old paths from the database
+            paths.forEach { pathData ->
+                drawPathData(pathData)
             }
 
-            drawPath(
-                path = path,
-                color = Color.Black,
-                style = Stroke(
-                    width = 5f,
-                    cap = StrokeCap.Round,
-                    join = StrokeJoin.Round
+            // Current temporary path being drawn
+            if (tempPathPoints.isNotEmpty()) {
+                val path = Path()
+
+                path.moveTo(tempPathPoints.first().x, tempPathPoints.first().y)
+
+                for (i in 1 until tempPathPoints.size) {
+                    path.lineTo(tempPathPoints[i].x, tempPathPoints[i].y)
+                }
+
+                drawPath(
+                    path = path,
+                    color = Color.Black,
+                    style = Stroke(
+                        width = 5f,
+                        cap = StrokeCap.Round,
+                        join = StrokeJoin.Round
+                    )
                 )
-            )
+            }
         }
+
+        TextFieldWithoutBackground(
+            value = title,
+            onValueChange = onTitleChange,
+        )
     }
 }
 
-fun DrawScope.drawPathData(data: PathData) {
+private fun DrawScope.drawPathData(data: PathData) {
     val path = Path()
     if (data.path.isNotEmpty()) {
 
@@ -115,6 +128,8 @@ fun DrawScope.drawPathData(data: PathData) {
 @Composable
 fun DrawingCanvasPreview() {
     DrawingCanvas(
+        title = "My Drawing",
+        onTitleChange = {},
         paths = listOf(
             createPathData(
                 offsets = listOf(

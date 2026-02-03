@@ -39,6 +39,7 @@ fun Screen(
                 currentSelectedPageId = state.selected.pageId,
                 onPageSelected = viewModel::onPageSelected,
                 onAddPage = viewModel::createNewPage,
+                onPageNameChange = viewModel::updatePageName,
 
                 onBackClicked = onBackClicked,
 

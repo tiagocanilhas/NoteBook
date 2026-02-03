@@ -27,6 +27,7 @@ fun createPathData(offsets: List<Offset>, color: Color, width: Float): PathData 
 }
 
 data class DrawingState(
+    val pageTitle: String = "",
     val selectedColor: Color = Color.Black,
     val paths: List<PathData> = emptyList()
 )
